@@ -1,0 +1,1241 @@
+Looks good, I've not had time to write it up yet, but I think the stages that we need to go through are this. Do you see any issues with the below? Afraid this is straight out of my head.
+
+
+
+Registration
+- Companies register as either an Agent or a Source.
+
+
+
+System Verification
+- Sources: After registering, sources must pass an automated API test. They will enter a test Agreement ID, and the system will run a suite of simulated tests against their API to confirm everything responds correctly.
+- Agents: Agents must also pass verification by creating, modifying, and cancelling a booking against test data we provide (instead of using live data). This ensures their integration works correctly before they can access real agreements.
+
+
+
+Agreements
+- A Source should be able to offer an agreement to an Agent.
+- The Agent must then approve the agreement before it becomes active.
+- This process should trigger both:
+- An email notification to the Agent.
+- A dashboard notification showing new agreements awaiting approval.
+
+
+
+Locations
+- Use NATO LOCODES as the base location list.
+- Suppliers expose a locations endpoint listing supported locations (as in the previous backend).
+- These locations must match NATO LOCODES.
+- The system should:
+- - Periodically check supported locations per Source.
+- - Respect differences in location availability per agreement. When checking, the agreement reference must be included (as with the echo).
+
+
+
+Availability Endpoint
+- This is the first production-grade endpoint.
+- While transport is via JSON and gRPC, the data model should follow the OTA XML API specification.
+- Many partners already use OTA, which should make integration easier.
+
+
+
+First Test Cycle
+- Build a skeleton Agent website to test the Availability API.
+- Internally, we will integrate the Availability API for at least two Sources.
+- Deploy the system into a live environment to run:
+- - Functional tests (agent–source integration).
+- - Scaling tests (identify and address bottlenecks early).
+
+
+
+Logging
+- For all booking operations, log every request sent and every response received.
+- This is essential for traceability and debugging.
+
+
+
+Core Booking Endpoints
+- Implement the remaining endpoints:
+- - Create Booking
+- - Cancel Booking
+- - Modify Booking
+- - Check Booking
+- For these, the system acts as a pass-through layer: ingest data, append the agreement reference, and forward to the appropriate supplier.
+- Unlike Availability, each booking request is sent to a single supplier only.
+
+
+
+SDKs
+- Provide lightweight SDKs in common languages (Node.js, PHP, Java, Python, Perl).
+- These serve as both a framework and example implementations for Sources and Agents.
+
+Apologies if you tried to read that straight away, copy and paste messed with the formatting, but I've fixed it now.
+
+Sohaib Ahmad 7:28 PM
+Hi sir
+
+thanks for this now the plan is clear to me
+
+so should we move step by step?
+
+Sohaib Ahmad 7:42 PM
+- Companies register as either an Agent or a Source.
+
+
+
+first question any specific data we have to get from them (except general registration data)
+
+RL
+Richard LIttle 9:33 PM
+We will need to store more data, I'll need to confirm with Rick, but that should be stright forward to add, for now, email, company name, type (agent or source) and a password should do to get us going.
+
+Sohaib Ahmad 9:34 PM
+Thanks for your response i got it
+
+Sunday, Sep 14
+Sohaib Ahmad 12:37 AM
+Hi Sir
+just a quick question can you shortly explain me role of agent
+means flow of an agent
+
+Tuesday, Sep 16
+Sohaib Ahmad 4:09 PM
+Hi sir
+
+Wednesday, Sep 17
+Sohaib Ahmad 8:35 PM
+waiting for your response sir.
+
+RL
+Richard LIttle 9:29 PM
+Sorry, Rick is away at the moment, so agent and source are the 2 sides of the middle ware. Agent would be like booking.com, they are looking for cars to hire, source is like enterprise, they have cars to rent out. The agent therefore when they sign up just needs an account to start with. They can then speak to sources who can send them agreements to accept.
+
+Thursday, Sep 18
+Sohaib Ahmad 3:07 PM
+Alright sir thanks for your response I'm on it
+
+Tuesday, Sep 23
+Sohaib Ahmad 4:52 AM
+Hi sir
+Hope you are doing well
+i want to inform that i have created the most flows as explained above
+
+
+
+i wanna ask that
+This is the first production-grade endpoint.
+- While transport is via JSON and gRPC, the data model should follow the OTA XML API specification.
+- Many partners already use OTA, which should make integration easier.
+
+
+
+can you explain this part a little more
+
+
+
+also do we first need to deploy on server or should i start developing sdks after finishing
+
+RL
+Richard LIttle 1:36 PM
+So attached the the OTA XML specification, we are only dealing with car hire, so we only really care about the OTA_Veh* requests and responses. To make it easier, rather than coming up with the field names that need to be sent, we should use the field names that the OTA uses, as this will make it easier for people to integrate with.
+
+2024A-1.0-Publication.zip 
+2024A-1.0-Publication.zip
+6 MB
+After that, I think it would be best to do the PHP SDK, and then deploy, that way we can get something to start working with it from the companies we can test with.
+
+Sohaib Ahmad 1:38 PM
+Thanks for your response sir
+i got it i will complete this flow within 2 days and than start building php sdk
+
+can you also clear about the locations a little bit? is it should be exactly like what we were doing before? like same respone format from them
+
+
+
+
+
+
+Sorry for the delay, and thanks for your patience. I’ve taken some time to work through where we’re heading, and things have shifted a bit. I’d like us to take a step back and focus first on getting the Ping/Echo API endpoint working but doing so in a way that sets the right foundation for scale and performance.
+
+
+
+I’ll expand the document later to cover locations, availability, and booking flows, but I believe it’s important that Echo is solid and scalable before we build on top of it. The performance and scalability aspects are key to the overall success of the project.
+
+
+
+This document outlines the direction we’re aiming for and how we see it working. It may differ from where we are today, but it’s better to make these adjustments early than later. I expect there will be plenty of questions, and I’ll check in later to go through any queries you might have.
+
+
+
+I don’t want to enforce a design pattern you’re not comfortable with we can adapt as needed but we do have clear scalability requirements that need to be met.
+
+Car Hire Middleware Technical Spec V0 (1).docx 
+Car Hire Middleware Technical Spec V0 (1).docx
+24 kB
+Sohaib Ahmad
+1:46 PM
+Thanks for sharing this direction—it makes sense to get the Ping/Echo API working first and ensure the foundation is strong before we layer on more features like locations, availability, and booking.
+
+
+
+I agree that scalability and performance are critical, so I’ll focus on structuring the Echo implementation in a way that can handle growth (e.g., stateless design, clean separation of concerns, and room for distributed scaling if needed).
+
+
+
+I’ll start outlining the approach and highlight any open questions or assumptions so we can align early. Once the Echo endpoint is solid, it’ll be easier and safer to extend into the rest of the flows.
+
+
+
+Thanks sir
+
+RL
+Richard LIttle
+Aug 31, 2025 | 1:32 PM
+Sorry for the delay, and thanks for your patience. I’ve taken some time to work through where we’re heading, and things have shifted a bit. I’d like us to take a step back and focus first on getting the Ping/Echo API endpoint working but doing so in a way that sets the right foundation for scale and performance.
+
+
+
+I’ll expand the document later to cover locations, availability, and booking flows, but I believe it’s important that Echo is solid and scalable before we build on top of it. The performance and scalability aspects are key to the overall success of the project.
+
+
+
+This document outlines the direction we’re aiming for and how we see it working. It may differ from where we are today, but it’s better to make these adjustments early than later. I expect there will be plenty of questions, and I’ll check in later to go through any queries you might have.
+
+
+
+I don’t want to enforce a design pattern you’re not comfortable with we can adapt as needed but we do have clear scalability requirements that need to be met.
+
+Show more
+Sohaib Ahmad
+2:10 PM
+Hi sir
+
+
+
+my initial questions are :
+
+
+
+Do you have a preferred language/runtime for the middleware (Node.js, Go, Java), or should I pick?
+What’s the maximum long-poll duration (wait_ms) you’d like me to allow (e.g. 10s, 15s)?
+For the agreement_ref values, do you want me to generate them automatically, or will you provide them when setting up Agreements?
+When a Source is too slow (over the 3s threshold), should we keep the default backoff/exclusion policy from the spec (1h → 2h → 4h), or do you want to adjust these timings?
+Do you want us to mark timed-out Sources explicitly in the results (e.g., a count or list), or just finalize the response as COMPLETE without details?
+For the Admin platform, should we build a basic dashboard in the PoC (to manage agreements & reset Source health), or is that part of a later phase?
+For observability, do you have a preferred stack (CloudWatch, OpenTelemetry, Datadog), or should I just add structured logs and metrics for now?
+
+I have understand the system we are gonna build and it is amazing and really scalable
+
+RL
+Richard LIttle
+2:27 PM
+Do you have a preferred language/runtime for the middleware (Node.js, Go, Java), or should I pick?
+- Personally I prefer Node (because I know it), but feel free to pcik
+
+
+
+What’s the maximum long-poll duration (wait_ms) you’d like me to allow (e.g. 10s, 15s)?
+- I think we may have to adjust it once live, so lets start at 10s
+
+
+
+For the agreement_ref values, do you want me to generate them automatically, or will you provide them when setting up Agreements?
+- I think that the soruces will want to set these to match their internal systems, so we should have it in the admin area when they are setting them up. Maybe include a warning if its a duplicate within their agreements.
+
+
+
+When a Source is too slow (over the 3s threshold), should we keep the default backoff/exclusion policy from the spec (1h → 2h → 4h), or do you want to adjust these timings?
+- I think the backoff policy is right, but I equally think it should be on a strike basis before it kicks in, so maybe 3 strikes before it escalates. I also think maybe we should start lower at 15 mins, rather than straight to 1 hour)
+
+
+
+Do you want us to mark timed-out Sources explicitly in the results (e.g., a count or list), or just finalize the response as COMPLETE without details?
+- Just finalise the results as somplete
+
+
+
+For the Admin platform, should we build a basic dashboard in the PoC (to manage agreements & reset Source health), or is that part of a later phase?
+- I think you actually have more of this than you think in the dashboard that you started, so let's add it into there as you already have the registration stuff, and we will still have to do the locations in a similar way to you already have, no point in throwing out something that is working and boardly covers what we will need
+
+
+
+For observability, do you have a preferred stack (CloudWatch, OpenTelemetry, Datadog), or should I just add structured logs and metrics for now?
+- I think for now, let's just add structured logs, but make sure it's separated so we can easily swap out to a platform later, however it will probably be on an ELK stack eventually, as again, it's what I know. However I don't want to hold you up if your more comfortable with something else.
+
+RL
+Richard LIttle
+3:10 PM
+thanks for the above Matthew, jsut to check Sohaib as its been a few weeks do iu owe you any money
+
+Matthew please set milestones so we can make sure Sohaib get s paid quickly
+
+Sohaib Ahmad
+3:13 PM
+Thanks sir for this response its clear to me and i'm starting work on it
+
+RL
+Richard LIttle
+Aug 31, 2025 | 2:27 PM
+Do you have a preferred language/runtime for the middleware (Node.js, Go, Java), or should I pick?
+- Personally I prefer Node (because I know it), but feel free to pcik
+
+
+
+What’s the maximum long-poll duration (wait_ms) you’d like me to allow (e.g. 10s, 15s)?
+- I think we may have to adjust it once live, so lets start at 10s
+
+
+
+For the agreement_ref values, do you want me to generate them automatically, or will you provide them when setting up Agreements?
+- I think that the soruces will want to set these to match their internal systems, so we should have it in the admin area when they are setting them up. Maybe include a warning if its a duplicate within their agreements.
+
+
+
+When a Source is too slow (over the 3s threshold), should we keep the default backoff/exclusion policy from the spec (1h → 2h → 4h), or do you want to adjust these timings?
+- I think the backoff policy is right, but I equally think it should be on a strike basis before it kicks in, so maybe 3 strikes before it escalates. I also think maybe we should start lower at 15 mins, rather than straight to 1 hour)
+
+
+
+Do you want us to mark timed-out Sources explicitly in the results (e.g., a count or list), or just finalize the response as COMPLETE without details?
+- Just finalise the results as somplete
+
+
+
+For the Admin platform, should we build a basic dashboard in the PoC (to manage agreements & reset Source health), or is that part of a later phase?
+- I think you actually have more of this than you think in the dashboard that you started, so let's add it into there as you already have the registration stuff, and we will still have to do the locations in a similar way to you already have, no point in throwing out something that is working and boardly covers what we will need
+
+
+
+For observability, do you have a preferred stack (CloudWatch, OpenTelemetry, Datadog), or should I just add structured logs and metrics for now?
+- I think for now, let's just add structured logs, but make sure it's separated so we can easily swap out to a platform later, however it will probably be on an ELK stack eventually, as again, it's what I know. However I don't want to hold you up if your more comfortable with something else.
+
+Show more
+No sir i don't think you owe me any money
+
+RL
+Richard LIttle
+Aug 31, 2025 | 3:10 PM
+thanks for the above Matthew, jsut to check Sohaib as its been a few weeks do iu owe you any money
+
+Monday, Sep 01
+RL
+Richard LIttle
+12:07 AM
+[Matt]: Are you happy with everything in that doc as a Milestone, or do you want to split it down further?
+
+Sohaib Ahmad
+12:13 AM
+Hi Matt
+I think it makes sense to split into two milestones:
+
+
+
+Milestone 1: Core Echo flow – Submit/Poll with request IDs, agreements, long-polling (10s), 120s timeout, basic logging, and agreements in the admin dashboard.
+
+
+
+Milestone 2: Source health and admin enhancements – strike-based slow source policy (15m backoff), health tracking with reset in admin, and structured logging ready for ELK later.
+
+That way we lock the foundation first, then add the refinements.
+
+RL
+Richard LIttle
+10:59 AM
+Matthew will arrange, how long do you expect Milestone 1 and 2 to take
+
+Sohaib Ahmad
+12:09 PM
+For timing, I’d expect:
+
+
+
+Milestone 1 (Core Echo flow): ~ 3–4 days
+
+
+
+Milestone 2 (Health + Admin enhancements): ~ 3–4 days
+
+
+
+So in total around 1 week if we go back-to-back.
+
+RL
+Richard LIttle
+12:12 PM
+yes we need to move on this very very quicklynow
+
+Sohaib Ahmad
+12:13 PM
+Alright sir i will complete these two within 2-4 days instead of week
+
+RL
+Richard LIttle
+12:30 PM
+much apprecaite that
+
+Sohaib Ahmad
+12:31 PM
+Thanks sir
+
+Wednesday, Sep 03
+Sohaib Ahmad
+1:54 AM
+Hi sir
+https://www.loom.com/share/f18ba2e4a35a42799a9bc921e72adce2?sid=24a4b559-bd8d-408c-ac60-964dd9dfe538
+
+
+
+check this video first milestone of setting grpc protocol is done
+
+Videos | Library | Loom - 2 September 2025
+Use Loom to record quick videos of your screen and cam. Explain anything clearly and easily – and skip the meeting. An essential tool for hybrid workplaces.
+Loom
+in video i'm showing
+
+
+
+The middleware accepts a request (SubmitEcho) with an active agreement, assigns a unique request ID, and fans out to 3 simulated sources. Each source emits partial results, then either a final or an error. The client polls (GetEchoResults) until all sources complete, and the system marks the request finalized. Logs show each step with IDs, and Prometheus metrics confirm submits, polls, emitted items (partials/finals/errors), and request lifetime — proving the full submit → poll → finalize cycle is working with validation, logging, and observability
+
+RL
+Richard LIttle
+2:01 PM
+I wil let matthew know rto come and look
+
+Sohaib Ahmad
+4:54 PM
+Alright sir I'm waiting
+
+Friday, Sep 05
+RL
+Richard LIttle
+3:01 PM
+This looks good, I need a cost in order to setup the milestones if you could let me know that for both milestones. Then I think we can get this connected to an admin area, and get it deployed for testing before we move on to the other commands that are needed.
+
+Thats from Matt btw
+
+Sohaib Ahmad
+3:03 PM
+Hi Matt
+
+You can setup cost by your own or can ask richard i have no issue in it
+
+RL
+Richard LIttle
+Sep 5, 2025 | 3:01 PM
+This looks good, I need a cost in order to setup the milestones if you could let me know that for both milestones. Then I think we can get this connected to an admin area, and get it deployed for testing before we move on to the other commands that are needed.
+
+Show more
+Definitely you are right i'm building second milestone which will include admin panel too
+and than we will deploy it
+
+RL
+Richard LIttle
+Sep 5, 2025 | 3:01 PM
+This looks good, I need a cost in order to setup the milestones if you could let me know that for both milestones. Then I think we can get this connected to an admin area, and get it deployed for testing before we move on to the other commands that are needed.
+
+Show more
+RL
+Richard LIttle
+4:18 PM
+ok how many days work did it take you as we are goign to have lots of work now , so we need to agree on a weekly rate
+
+or daily rate this is rick speaking now
+
+Sohaib Ahmad
+4:20 PM
+Hi sir,
+you can decide about this i'm agree on both daily or weekly
+and it took almost 3 days
+2 in setting and 1 next in refining it and right now i'm working on milestone two like i have been working from monday on daily basis on this
+
+RL
+Richard LIttle updated the contract
+
+9:16 PM
+ADDED:
+
+Name: Inital conceptt
+
+Amount: $200.00
+
+Due: Friday, Sep 5, 2025
+
+Order: Milestone 8
+
+View Updated Contract
+Richard LIttle activated the milestone
+
+9:17 PM
+Initial Concept test
+
+Milestone 8: "Inital conceptt"
+
+Due: Friday, Sep 05, 2025
+
+Amount: $200.00
+
+View details
+Richard LIttle approved the milestone
+
+9:17 PM
+Milestone 8: "Inital conceptt"
+
+Due: Friday, Sep 05, 2025
+
+View details
+Sohaib Ahmad
+9:22 PM
+Thanks for this sir
+also we can decide weekly rate as you want
+
+RL
+Richard LIttle
+9:45 PM
+I wil be discussing wiht matthew over the next few weeks we may even be able to offer you a full time job if this is of internest to you
+
+Sohaib Ahmad
+9:46 PM
+Alright sir
+that will be great for me to work as full time with you i'm 110% interested in it
+
+Monday, Sep 08
+RL
+Richard LIttle
+3:14 PM
+Matghew shoud ohave finshed testing and wil come back to you
+
+did you get the payment wa sit ok
+
+Sohaib Ahmad
+3:38 PM
+Yes sir
+it was good enough
+
+RL
+Richard LIttle
+Sep 8, 2025 | 3:14 PM
+did you get the payment wa sit ok
+
+Alright sir
+i'm also just creating admin. panel for this
+and also waiting for next procedure
+
+RL
+Richard LIttle
+Sep 8, 2025 | 3:14 PM
+Matghew shoud ohave finshed testing and wil come back to you
+
+Tuesday, Sep 09
+Sohaib Ahmad
+2:21 AM
+Hi sir
+
+
+
+check this video
+https://www.loom.com/share/2cba23d6b0f04b01a3850f2e0770e63d?sid=356c1cc9-a887-4949-9b66-67bef66065b8
+
+
+
+Admin API is live and aligned with v0.3 (Submit + Poll, Source Health/Auto-Heal).
+
+
+
+Endpoints
+
+
+
+Sources: CRUD
+
+
+
+Agreements: CRUD
+
+
+
+Health: Metrics overview + reset
+
+
+
+Diagnostics: Submit Echo + long-poll results; audit logs enabled
+
+Videos | Library | Loom - 9 September 2025
+Use Loom to record quick videos of your screen and cam. Explain anything clearly and easily – and skip the meeting. An essential tool for hybrid workplaces.
+Loom
+our first two milestone have been completed
+
+With grpc implementation in node js and admin panel in react js
+
+can you share next requirement and flow of the application
+
+Wednesday, Sep 10
+Sohaib Ahmad
+12:31 PM
+Hi sir
+
+RL
+Richard LIttle
+9:32 PM
+sorry matthew has bneen delayed he wil look very soon
+
+Thursday, Sep 11
+Sohaib Ahmad
+1:18 AM
+alright sir
+No issue i will be waiting
+
+Saturday, Sep 13
+RL
+Richard LIttle
+12:52 PM
+Looks good, I've not had time to write it up yet, but I think the stages that we need to go through are this. Do you see any issues with the below? Afraid this is straight out of my head.
+
+
+
+Registration
+- Companies register as either an Agent or a Source.
+
+
+
+System Verification
+- Sources: After registering, sources must pass an automated API test. They will enter a test Agreement ID, and the system will run a suite of simulated tests against their API to confirm everything responds correctly.
+- Agents: Agents must also pass verification by creating, modifying, and cancelling a booking against test data we provide (instead of using live data). This ensures their integration works correctly before they can access real agreements.
+
+
+
+Agreements
+- A Source should be able to offer an agreement to an Agent.
+- The Agent must then approve the agreement before it becomes active.
+- This process should trigger both:
+- An email notification to the Agent.
+- A dashboard notification showing new agreements awaiting approval.
+
+
+
+Locations
+- Use NATO LOCODES as the base location list.
+- Suppliers expose a locations endpoint listing supported locations (as in the previous backend).
+- These locations must match NATO LOCODES.
+- The system should:
+- - Periodically check supported locations per Source.
+- - Respect differences in location availability per agreement. When checking, the agreement reference must be included (as with the echo).
+
+
+
+Availability Endpoint
+- This is the first production-grade endpoint.
+- While transport is via JSON and gRPC, the data model should follow the OTA XML API specification.
+- Many partners already use OTA, which should make integration easier.
+
+
+
+First Test Cycle
+- Build a skeleton Agent website to test the Availability API.
+- Internally, we will integrate the Availability API for at least two Sources.
+- Deploy the system into a live environment to run:
+- - Functional tests (agent–source integration).
+- - Scaling tests (identify and address bottlenecks early).
+
+
+
+Logging
+- For all booking operations, log every request sent and every response received.
+- This is essential for traceability and debugging.
+
+
+
+Core Booking Endpoints
+- Implement the remaining endpoints:
+- - Create Booking
+- - Cancel Booking
+- - Modify Booking
+- - Check Booking
+- For these, the system acts as a pass-through layer: ingest data, append the agreement reference, and forward to the appropriate supplier.
+- Unlike Availability, each booking request is sent to a single supplier only.
+
+
+
+SDKs
+- Provide lightweight SDKs in common languages (Node.js, PHP, Java, Python, Perl).
+- These serve as both a framework and example implementations for Sources and Agents.
+
+Apologies if you tried to read that straight away, copy and paste messed with the formatting, but I've fixed it now.
+
+Sohaib Ahmad
+7:28 PM
+Hi sir
+
+thanks for this now the plan is clear to me
+
+so should we move step by step?
+
+Sohaib Ahmad
+7:42 PM
+- Companies register as either an Agent or a Source.
+
+
+
+first question any specific data we have to get from them (except general registration data)
+
+RL
+Richard LIttle
+9:33 PM
+We will need to store more data, I'll need to confirm with Rick, but that should be stright forward to add, for now, email, company name, type (agent or source) and a password should do to get us going.
+
+Sohaib Ahmad
+9:34 PM
+Thanks for your response i got it
+
+Sunday, Sep 14
+Sohaib Ahmad
+12:37 AM
+Hi Sir
+just a quick question can you shortly explain me role of agent
+means flow of an agent
+
+Tuesday, Sep 16
+Sohaib Ahmad
+4:09 PM
+Hi sir
+
+Wednesday, Sep 17
+Sohaib Ahmad
+8:35 PM
+waiting for your response sir.
+
+RL
+Richard LIttle
+9:29 PM
+Sorry, Rick is away at the moment, so agent and source are the 2 sides of the middle ware. Agent would be like booking.com, they are looking for cars to hire, source is like enterprise, they have cars to rent out. The agent therefore when they sign up just needs an account to start with. They can then speak to sources who can send them agreements to accept.
+
+Thursday, Sep 18
+Sohaib Ahmad
+3:07 PM
+Alright sir thanks for your response I'm on it
+
+Tuesday, Sep 23
+Sohaib Ahmad
+4:52 AM
+Hi sir
+Hope you are doing well
+i want to inform that i have created the most flows as explained above
+
+
+
+i wanna ask that
+This is the first production-grade endpoint.
+- While transport is via JSON and gRPC, the data model should follow the OTA XML API specification.
+- Many partners already use OTA, which should make integration easier.
+
+
+
+can you explain this part a little more
+
+
+
+also do we first need to deploy on server or should i start developing sdks after finishing
+
+RL
+Richard LIttle
+1:36 PM
+So attached the the OTA XML specification, we are only dealing with car hire, so we only really care about the OTA_Veh* requests and responses. To make it easier, rather than coming up with the field names that need to be sent, we should use the field names that the OTA uses, as this will make it easier for people to integrate with.
+
+2024A-1.0-Publication.zip 
+2024A-1.0-Publication.zip
+6 MB
+After that, I think it would be best to do the PHP SDK, and then deploy, that way we can get something to start working with it from the companies we can test with.
+
+Sohaib Ahmad
+1:38 PM
+Thanks for your response sir
+i got it i will complete this flow within 2 days and than start building php sdk
+
+can you also clear about the locations a little bit? is it should be exactly like what we were doing before? like same respone format from them
+
+RL
+Richard LIttle
+1:47 PM
+I'll need to check that, but it should be fine. I think we will have things to tweak once we get it deployed and have some people working with it, so it will be pretty close anyway
+
+Sohaib Ahmad
+1:49 PM
+Yes definitely sir we need to have some changings after deployment
+alright for now i'm taking that as refference and it is already flexible system to change anything
+
+RL
+Richard LIttle
+Sep 23, 2025 | 1:47 PM
+I'll need to check that, but it should be fine. I think we will have things to tweak once we get it deployed and have some people working with it, so it will be pretty close anyway
+
+Show more
+Thanks for your time sir
+
+i will keep you updated
+
+Wednesday, Sep 24
+RL
+Richard LIttle
+6:29 PM
+ok not sure where we are , how many days have you spent so i can pay you
+
+Sohaib Ahmad
+6:57 PM
+Sir regarding where we are
+the flow of grpc working
+signup login working
+agreements working
+Availability Endpoint is almost completed
+
+
+
+nato locodes location validation is almost completed
+logging is working all
+
+i will show you video within couple of days once i completed with it
+
+Sohaib Ahmad
+7:03 PM
+regarding days
+i have worked 1 day than submitted the video.
+
+
+
+than i have been on it from 13 september when you shared information
+and i skipped 1 days from it
+so it is almost 10-12 days till now sir
+
+Thursday, Sep 25
+RL
+Richard LIttle
+11:32 AM
+I wil send you a payment today
+
+Sohaib Ahmad
+12:33 PM
+Alright sir
+
+RL
+Richard LIttle updated the contract
+
+9:18 PM
+ADDED:
+
+Name: Dev Work for API
+
+Amount: $600.00
+
+Due: Thursday, Sep 25, 2025
+
+Order: Milestone 9
+
+View Updated Contract
+Richard LIttle activated the milestone
+
+9:19 PM
+50 a day 12 days
+
+Milestone 9: "Dev Work for API"
+
+Due: Thursday, Sep 25, 2025
+
+Amount: $600.00
+
+View details
+Richard LIttle approved the milestone
+
+9:19 PM
+Milestone 9: "Dev Work for API"
+
+Due: Thursday, Sep 25, 2025
+
+View details
+Sohaib Ahmad
+10:02 PM
+Thanks sir for the payment
+
+Wednesday, Oct 01
+RL
+Richard LIttle
+8:51 PM
+Matt: Hi, I need to do some testing for the network side of things, could you send us over where we are up to on the code so I can do some testing, understand it will not be fully working
+
+Sohaib Ahmad
+8:54 PM
+Hi matt
+Alright give me tomorrow matt because I'm fixing a bug in it once it fixed than will share it with you
+For testing so you can understand where we are
+
+I will also send guide along it for setting it up properly
+
+One question will you do local testing? Or on server
+
+RL
+Richard LIttle
+9:03 PM
+This will be first locally, I want to look how the port usage scales under load, so that I can talk to the server guides about deploiying
+
+Sohaib Ahmad
+9:04 PM
+Alright matt i got it 👍
+
+RL
+Richard LIttle
+9:04 PM
+Thanks 👍
+
+Sohaib Ahmad
+9:05 PM
+I'm fixing that bug as soon it fixed and working i will share source code with you
+
+RL
+Richard LIttle
+9:06 PM
+👍
+
+Saturday, Oct 04
+RL
+Richard LIttle
+9:04 PM
+Just checking in to see how it's going
+
+Sohaib Ahmad
+9:08 PM
+Hi sir
+its going well i got some bugs at low level in some grpc polling and validationg i have fixed most hopefully by tomorrow night or monday i will fix and will share the code with guide for mat to setup
+
+and test
+
+RL
+Richard LIttle
+9:15 PM
+Sounds good, thanks
+
+Tuesday, Oct 07
+RL
+Richard LIttle
+3:38 PM
+Hi this is Rick, how many days have you done since i last paid you
+
+and how is the progress
+
+Sohaib Ahmad
+3:58 PM
+Hi Sir,
+
+
+
+The implementation is nearly complete. I’m currently preparing the documentation and testing guide for Mat to validate everything.
+
+
+
+While it may not be 100% perfect yet, I’ve ensured that the current version fully aligns with the functional guide. We might need a few minor tweaks during testing, but the core system is stable and operational.
+
+
+
+At this stage, it’s already utilizing gRPC internally for key processes such as polling, source health checks, and validation handling, ensuring efficient communication and reliability.
+only working on minor tweaks in connections
+
+RL
+Richard LIttle
+Oct 7, 2025 | 3:38 PM
+Hi this is Rick, how many days have you done since i last paid you
+
+carhire.mp4 
+carhire.mp4
+580 kB
+Regarding days you paid me on 25 september
+its 12th day today
+
+Sohaib Ahmad
+6:11 PM
+https://www.loom.com/share/2a4a04738284455f9f1a40d698f52fd5?sid=b9fe735e-acd1-4555-9c78-1e91e59ac29a
+
+Wednesday, Oct 08
+RL
+Richard LIttle
+6:31 PM
+What hosting would you need to get this up on a server for testing?
+
+Sohaib Ahmad
+6:33 PM
+I think any virtual private server will work for testing
+
+RL
+Richard LIttle
+6:35 PM
+Assume your comfortable with Linux?
+
+Sohaib Ahmad
+6:35 PM
+Yes sir
+
+Sohaib Ahmad
+6:47 PM
+I can work on linux easily
+
+Thursday, Oct 09
+RL
+Richard LIttle updated the contract
+
+12:02 PM
+ADDED:
+
+Name: inital concept
+
+Amount: $600.00
+
+Due: Thursday, Oct 9, 2025
+
+Order: Milestone 10
+
+View Updated Contract
+Richard LIttle activated the milestone
+
+12:02 PM
+up to 7th October
+
+Milestone 10: "inital concept"
+
+Due: Thursday, Oct 09, 2025
+
+Amount: $600.00
+
+View details
+Richard LIttle approved the milestone
+
+12:02 PM
+Milestone 10: "inital concept"
+
+Due: Thursday, Oct 09, 2025
+
+View details
+Saturday, Oct 11
+Sohaib Ahmad
+5:37 AM
+Hi sir I'm sharing one version for testing locally if want but i will suggest that i should setup it on vps for testing
+
+
+
+To run the backend first install the npm install in the main then in the ⁠ agent-backend ⁠ folder and also ⁠ source-backend ⁠ after that in the main run this: ⁠ npm run prisma:gen ⁠ -> ⁠ npm run prisma:migrate ⁠ -> ⁠ npm run prisma:seed ⁠ -> ⁠ npm run seed:unlocode ⁠ -> ⁠ npm run test:grpc ⁠ to run all server at once -> ⁠ npm run dev:all ⁠ | If token related issue comes in the agent Backend then register the agent and add its token into the .env file of the agent-backend
+
+
+
+For the frontend -> Simply install -> npm package and ⁠ npm run dev ⁠ for each one.
+
+
+
+updated.zip contain our core backend
+agent.zip ann example agent and source is an example of source and admin contain frontend
+
+5 files 
+Updated.zip
+218 kB
+Source.zip
+82 kB
+car_hire.sql
+34 kB
+Agent.zip
+80 kB
+Admin (2).zip
+125 kB
+thats not perfect version it contains grpc setup connection and agreement offering part
+validation part
+
+
+
+i'm working continously to improve and creating a php sdk for easily testing
+
+But my true suggestions is setting up a test server because setting up local is little critical and also the mtls verification is commented for now because locally it does not work perfectly it can be working perfectly on linux part
+
+Tuesday, Oct 14
+Sohaib Ahmad
+5:08 PM
+update till now:
+php sdk is 60-70% ready
+have optimized poll in our middleware
+
+
+
+working continuously
+
+RL
+Richard LIttle
+7:36 PM
+weel done Matthew is back monday so I am sure he wil be able to review
+
+Sohaib Ahmad
+7:36 PM
+alright sir
+
+Saturday, Oct 18
+Sohaib Ahmad
+6:51 AM
+Hi sir
+Update till now :
+php sdk is 90% ready now adding some more functions and easy to handle logics to optimize it
+and also working on improvements on system security and controlls on the middleware
+
+
+
+i will keep you updated
+
+also have started working on js sdk
+my plan is to complete the sdks asap in the base so they can be used for testing and get improved as we will change system or improve it
+
+Tuesday, Oct 21
+Sohaib Ahmad
+4:49 AM
+HI sir
+Any feedback for me??
+regarding The PHP SDK it is completed now testing and now has also started next sdk In Js
+
+RL
+Richard LIttle
+11:02 AM
+hi think mattew is back today , and i wil send you a payment later
+
+Sohaib Ahmad
+1:24 PM
+alright sir
+
+RL
+Richard LIttle
+Oct 21, 2025 | 11:02 AM
+hi think mattew is back today , and i wil send you a payment later
+
+RL
+Richard LIttle
+1:33 PM
+how many more days have you done sonce oi lst laid you
+
+Sohaib Ahmad
+1:33 PM
+i took one off sir and you paid me on 7th October
+
+RL
+Richard LIttle
+1:34 PM
+ok and how many days have you worked in it
+
+Sohaib Ahmad
+1:35 PM
+its almost 13 days by removing one off
+
+also if remove today that its 12
+
+RL
+Richard LIttle
+1:37 PM
+ok wil send monies later today when my meetings are conclused
+
+Sohaib Ahmad
+1:38 PM
+alright sir
+thanks sir
+
+RL
+Richard LIttle
+Oct 21, 2025 | 1:37 PM
+ok wil send monies later today when my meetings are conclused
+
+Wednesday, Oct 22
+RL
+Richard LIttle updated the contract
+
+1:42 PM
+ADDED:
+
+Name: 12 days work
+
+Amount: $600.00
+
+Due: Wednesday, Oct 22, 2025
+
+Order: Milestone 11
+
+View Updated Contract
+Richard LIttle activated the milestone
+
+1:42 PM
+12 days dev work
+
+Milestone 11: "12 days work"
+
+Due: Wednesday, Oct 22, 2025
+
+Amount: $600.00
+
+View details
+Sohaib Ahmad
+2:42 PM
+Thanks sir
+can you also approve it
+
+RL
+Richard LIttle
+5:28 PM
+i have a question , doyou know flutter
+
+Sohaib Ahmad
+5:33 PM
+yes sir
+
+i know sir and have good grip on it
+
+RL
+Richard LIttle approved the milestone
+
+5:45 PM
+Milestone 11: "12 days work"
+
+Due: Wednesday, Oct 22, 2025
+
+View details
+Sohaib Ahmad
+5:50 PM
+Thanks sir
+
+Thursday, Oct 23
+Sohaib Ahmad
+1:48 AM
+Hi sir
+is there anything i can do in that for you?
+
+RL
+Richard LIttle
+Oct 22, 2025 | 5:28 PM
+i have a question , doyou know flutter
+
+Monday, Oct 27
+Sohaib Ahmad
+10:08 PM
+Hi sir
+update till now
+
+
+
+js SDK has been done working on its documentation and working on Go Sdk
+and typescript has been started and next have plan to complete python and go
+also in parallel have improved architecture much more in term of speed
+
+Wednesday, Oct 29
+RL
+Richard LIttle
+7:51 PM
+Hi, we should have a server deployed later today so that we can get this setup for testing, hope thats ok
+
+Sohaib Ahmad
+7:52 PM
+Hi sir
+yes you can share i will set-up till tomorrow for you to test
+
+I will start deployment today asap you shared
+
+RL
+Richard LIttle
+10:29 PM
+Thanks, we're just waiting for the details to come though
+
+Sohaib Ahmad
+10:30 PM
+alright sir
